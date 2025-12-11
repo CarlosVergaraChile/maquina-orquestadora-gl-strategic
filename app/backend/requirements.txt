@@ -13,6 +13,7 @@ asyncpg~=0.29.0
 python-jose[cryptography]~=3.3.0
 bcrypt~=4.1.0
 passlib~=1.7.4
+PyJWT~=2.8.0
 
 # AI Integration
 anthropic~=0.20.0
