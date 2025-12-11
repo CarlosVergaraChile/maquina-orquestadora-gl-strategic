@@ -15,8 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import uvicorn
 import jwt
-from .websocket import router as websocket_router
-
+from app.backend.websocket import router as websocket_router
 try:
     from anthropic import Anthropic
 except ImportError:
