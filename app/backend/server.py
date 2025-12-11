@@ -16,6 +16,9 @@ from pydantic import BaseModel
 import uvicorn
 import jwt
 from app.backend.websocket import router as websocket_router
+from app.backend.health_check import HealthChecker, DatabaseHealthCheck, ApiHealthCheck
+from app.backend.auto_maintenance import MaintenanceWorker, DatabaseMaintenanceWorker
+from app.backend.auto_improvement import AutoImprovementWorker
 try:
     from anthropic import Anthropic
 except ImportError:
