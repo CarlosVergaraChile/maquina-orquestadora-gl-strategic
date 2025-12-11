@@ -9,4 +9,5 @@ COPY . .
 
 EXPOSE 8000
 
+ENV PYTHONPATH=/app
 CMD ["python", "-m", "app.backend.server"]
