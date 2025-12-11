@@ -313,14 +313,67 @@ async function getToken() {
             messagesEl.appendChild(div);
             messagesEl.scrollTop = messagesEl.scrollHeight;
         }
-        
+
+
+        let loadingStartTime = null;
+let loadingTimer = null;
+
+function startLoadingTimer() {
+    loadingStartTime = Date.now();
+    const timerEl = document.getElementById('loading-timer');
+    if (timerEl) {
+        loadingTimer = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - loadingStartTime) / 1000);
+            timerEl.textContent = `${elapsed}s`;
+        }, 100);
+    }
+}
+
+function stopLoadingTimer() {
+    if (loadingTimer) {
+        clearInterval(loadingTimer);
+        loadingTimer = null;
+    }
+    loadingStartTime = null;
+}
+
+        let responseTimes = JSON.parse(localStorage.getItem('responseTimes')) || [];
+
+function updateLoadingProgress() {
+    const avgTime = responseTimes.length > 0 ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length : 15;
+    const estimateEl = document.getElementById('loading-estimate');
+    const barEl = document.getElementById('loading-bar');
+    
+    if (estimateEl && barEl) {
+        const progressInterval = setInterval(() => {
+            if (!loadingStartTime) {
+                clearInterval(progressInterval);
+                return;
+            }
+            const elapsed = (Date.now() - loadingStartTime) / 1000;
+            const progress = Math.min((elapsed / avgTime) * 100, 95);
+            const remaining = Math.max(Math.ceil(avgTime - elapsed), 0);
+            
+            barEl.style.width = progress + '%';
+            estimateEl.textContent = remaining > 0 ? `Estimado: ${remaining}s` : 'Casi listo...';
+        }, 200);
+    }
+}
+
+function recordResponseTime(ms) {
+    responseTimes.push(ms);
+    if (responseTimes.length > 10) responseTimes.shift();
+    localStorage.setItem('responseTimes', JSON.stringify(responseTimes));
+}
         function showLoading() {
             const div = document.createElement('div');
             div.className = 'message assistant';
             div.id = 'loading';
-            div.innerHTML = '<div><div class="bubble"><div class="loading"></div><div class="loading"></div><div class="loading"></div></div></div>';
+            div.innerHTML =  `<div><div class="bubble"><div class="loading"></div><div class="loading"></div><div class="loading"></div></div><div style="margin-top: 10px; font-size: 12px; color: #888; text-align: center;"><div id="loading-timer" style="font-weight: bold; color: #6667ea;">0s</div><div id="loading-estimate" style="margin-top: 4px;">Estimado: calculando...</div><div style="margin-top: 8px; width: 120px; height: 4px; background: #e0e0e0; border-radius: 2px; margin-left: auto; margin-right: auto; overflow: hidden;"><div id="loading-bar" style="height: 100%; background: #6667ea; width: 0%; transition: width 0.3s;"></div></div></div></div>`
             messagesEl.appendChild(div);
             messagesEl.scrollTop = messagesEl.scrollHeight;
+                startLoadingTimer();
+    updateLoadingProgress();
         }
         
         function removeLoading() {
