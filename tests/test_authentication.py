@@ -9,12 +9,14 @@ from unittest.mock import Mock, patch, AsyncMock
 class TestJWTAuthentication:
     """Tests para autenticación JWT."""
 
+    @pytest.mark.smoke
     def test_jwt_token_generation(self):
         """Verifica que se puede generar un token JWT válido."""
         # TODO: Implementar test cuando JWT module esté disponible
         assert True
 
-    def test_jwt_token_validation(self):
+        @pytest.mark.smoke
+def test_jwt_token_validation(self):
         """Verifica validación de tokens JWT."""
         assert True
 
@@ -30,7 +32,8 @@ class TestJWTAuthentication:
 class TestPasswordSecurity:
     """Tests para seguridad de contraseñas."""
 
-    def test_password_hashing_with_passlib(self):
+        @pytest.mark.smoke
+def test_password_hashing_with_passlib(self):
         """Verifica que passlib puede hashear contraseñas."""
         from passlib.context import CryptContext
         pwd_context = CryptContext(schemes=["bcrypt"])
