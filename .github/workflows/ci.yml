@@ -41,7 +41,7 @@ jobs:
       - name: Install dependencies
         run: |
           pip install -r app/backend/requirements.txt
-          pip install pytest pytest-cov pytest-asyncio
+          pip install pytest pytest-cov pytest-asyncio pytest-xdist email_validator pyjwt passlib
       - name: Run tests
         run: |
           pytest app/backend/test_integration.py -v --cov=app/backend
