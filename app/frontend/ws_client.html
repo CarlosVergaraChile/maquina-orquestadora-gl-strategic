@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Máquina Orquestadora GL - Cliente WebSocket</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 20px; background-color: #f4f4f4; }
+        .container { max-width: 800px; margin: 0 auto; background-color: white; padding: 20px; box-shadow: 0 0 10px rgba(0,0,0,0.1); border-radius: 8px; }
+        h1 { color: #333; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+        .controls input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1; }
+        .controls button { padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; transition: background-color 0.3s; }
+        #connectBtn { background-color: #28a745; }
+        #connectBtn:hover { background-color: #218838; }
+        #disconnectBtn { background-color: #dc3545; }
+        #disconnectBtn:hover { background-color: #c82333; }
+        #status-display { font-weight: bold; margin-left: auto; }
+        #status-display.connected { color: #28a745; }
+        #status-display.disconnected { color: #dc3545; }
+        
+        #chat-window { 
+            border: 1px solid #ccc; 
+            height: 400px; 
+            overflow-y: auto; 
+            padding: 10px; 
+            margin-bottom: 10px;
+            background-color: #fff;
+            border-radius: 4px;
+        }
+        .message-row { margin-bottom: 15px; }
+        .message-row p { margin: 0; line-height: 1.5; }
+        .user-msg { color: #004085; font-weight: 600; }
+        .ai-response-label { color: #007bff; font-weight: 600; display: block; margin-top: 5px; }
+        .ai-response-text { color: #333; white-space: pre-wrap; }
+        .status-msg { color: #6c757d; font-style: italic; border-left: 3px solid #ffc107; padding-left: 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Máquina Orquestadora GL (v2.2)</h1>
+
+        <div class="controls">
+            <input type="text" id="token-input" placeholder="JWT Token (Autenticación)" style="flex-grow: 3;" value="TU_TOKEN_JWT_AQUÍ">
+            <button id="connectBtn" onclick="connectWebSocket()">Conectar</button>
+            <button id="disconnectBtn" onclick="disconnectWebSocket()" disabled>Desconectar</button>
+            <span id="status-display" class="disconnected">Desconectado</span>
+        </div>
+        
+        <div id="chat-window">
+            </div>
+
+        <div class="controls">
+            <input type="text" id="question-input" placeholder="Escribe tu pregunta de estrategia..." style="width: 100%;" disabled>
+            <button id="sendBtn" onclick="sendMessage()" disabled>Enviar Pregunta</button>
+        </div>
+    </div>
+
+    <script>
+        const WS_HOST = "ws://localhost:8000";
+        const WS_ENDPOINT = "/ws/ask";
+        
+        let socket = null;
+        let currentAiOutputElement = null; // Elemento actual donde se hace el streaming
+        
+        const chatWindow = document.getElementById('chat-window');
+        const statusDisplay = document.getElementById('status-display');
+        const questionInput = document.getElementById('question-input');
+        const tokenInput = document.getElementById('token-input');
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const sendBtn = document.getElementById('sendBtn');
+
+        function appendMessage(text, className) {
+            const row = document.createElement('div');
+            row.className = 'message-row';
+            const p = document.createElement('p');
+            p.className = className;
+            p.textContent = text;
+            row.appendChild(p);
+            chatWindow.appendChild(row);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function updateControls(isConnected) {
+            connectBtn.disabled = isConnected;
+            disconnectBtn.disabled = !isConnected;
+            sendBtn.disabled = !isConnected;
+            questionInput.disabled = !isConnected;
+            tokenInput.disabled = isConnected;
+            statusDisplay.className = isConnected ? 'connected' : 'disconnected';
+            statusDisplay.textContent = isConnected ? 'Conectado' : 'Desconectado';
+        }
+
+        function connectWebSocket() {
+            const token = tokenInput.value.trim();
+            if (!token) {
+                alert("Por favor, ingresa el JWT Token.");
+                return;
+            }
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                appendMessage("Ya estás conectado.", 'status-msg');
+                return;
+            }
+
+            const WS_URL_WITH_TOKEN = `${WS_HOST}${WS_ENDPOINT}?token=${token}`;
+            
+            try {
+                socket = new WebSocket(WS_URL_WITH_TOKEN);
+            } catch (error) {
+                appendMessage("Error al crear la conexión WebSocket. Revisa el protocolo (ws:// o wss://).", 'status-msg');
+                return;
+            }
+
+
+            socket.onopen = function() {
+                updateControls(true);
+                appendMessage("Conexión WebSocket establecida y autenticada.", 'status-msg');
+            };
+
+            socket.onmessage = function(event) {
+                const fragment = event.data;
+                const endMarker = "--- FIN DEL PROCESO DE ORQUESTACIÓN ---";
+                
+                if (!currentAiOutputElement || currentAiOutputElement.dataset.status === 'completed') {
+                    // Iniciar una nueva respuesta
+                    currentAiOutputElement = document.createElement('span');
+                    currentAiOutputElement.id = 'ai-output-stream-' + Date.now();
+                    currentAiOutputElement.className = 'ai-response-text';
+                    currentAiOutputElement.dataset.status = 'streaming';
+                    
+                    const row = document.createElement('div');
+                    row.className = 'message-row';
+                    row.innerHTML = `<span class="ai-response-label">AI:</span>`;
+                    row.appendChild(currentAiOutputElement);
+                    chatWindow.appendChild(row);
+                }
+
+                if (fragment.includes(endMarker)) {
+                    // Finalizar el streaming
+                    currentAiOutputElement.textContent += ' [Proceso Finalizado]';
+                    currentAiOutputElement.dataset.status = 'completed';
+                    // Quitar el marcador de fin del texto mostrado
+                    currentAiOutputElement.textContent = currentAiOutputElement.textContent.replace(endMarker, '').trim(); 
+                } else {
+                    // Streaming word-by-word
+                    currentAiOutputElement.textContent += fragment;
+                }
+                
+                chatWindow.scrollTop = chatWindow.scrollHeight;
+            };
+
+            socket.onclose = function(event) {
+                updateControls(false);
+                appendMessage(`Conexión cerrada. Code: ${event.code}. Razón: ${event.reason || 'N/A'}`, 'status-msg');
+                currentAiOutputElement = null;
+            };
+
+            socket.onerror = function(error) {
+                updateControls(false);
+                appendMessage("ERROR: WebSocket falló o autenticación rechazada.", 'status-msg');
+                if (socket) socket.close();
+            };
+        }
+
+        function disconnectWebSocket() {
+            if (socket) {
+                socket.close(1000, "Desconexión manual solicitada por el usuario.");
+                socket = null;
+                updateControls(false);
+            }
+        }
+
+        function sendMessage() {
+            const question = questionInput.value.trim();
+            if (!question || socket.readyState !== WebSocket.OPEN) {
+                alert("La conexión no está abierta o la pregunta está vacía.");
+                return;
+            }
+
+            appendMessage(`Tú: ${question}`, 'user-msg');
+            
+            const messagePayload = {
+                question: question,
+                context: "contexto-operacional-adicional" 
+            };
+            
+            try {
+                socket.send(JSON.stringify(messagePayload));
+                questionInput.value = '';
+            } catch (e) {
+                appendMessage("Error al enviar el mensaje. Intenta reconectar.", 'status-msg');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateControls(false); // Inicialmente desconectado
+        });
+    </script>
+</body>
+</html>
