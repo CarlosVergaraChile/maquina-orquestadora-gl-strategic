@@ -15,7 +15,7 @@ class TestJWTAuthentication:
         # TODO: Implementar test cuando JWT module esté disponible
         assert True
 
-        @pytest.mark.smoke
+    @pytest.mark.smoke
 def test_jwt_token_validation(self):
         """Verifica validación de tokens JWT."""
         assert True
@@ -32,7 +32,7 @@ def test_jwt_token_validation(self):
 class TestPasswordSecurity:
     """Tests para seguridad de contraseñas."""
 
-        @pytest.mark.smoke
+    @pytest.mark.smoke
 def test_password_hashing_with_passlib(self):
         """Verifica que passlib puede hashear contraseñas."""
         from passlib.context import CryptContext
