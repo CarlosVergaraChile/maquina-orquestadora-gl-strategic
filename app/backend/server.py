@@ -14,6 +14,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import uvicorn
 import jwt
+from .websocket import router as websocket_router
 
 try:
     from anthropic import Anthropic
@@ -222,6 +223,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Incluir router de WebSocket
+app.include_router(websocket_router)
 
 # Inicializar componentes
 db = ConversationDB(DB_PATH)
