@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from unittest.mock import Mock, patch, AsyncMock
 
 
+@pytest.mark.unit
 class TestJWTAuthentication:
     """Tests para autenticación JWT."""
 
