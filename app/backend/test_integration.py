@@ -20,7 +20,7 @@ try:
 except ImportError:
     pytest.skip("FastAPI not installed", allow_module_level=True)
 
-from server import app, db, orchestrator
+from app.backend.server import app, db, orchestrator
 from database import Database
 from claude_integration import ClaudeOrchestrator
 
