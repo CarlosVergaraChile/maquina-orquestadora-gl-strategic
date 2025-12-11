@@ -30,6 +30,7 @@ python-json-logger>=2.0.7
 PyJWT>=2.8.0  # JWT token generation and validation
 python-jose>=3.3.0  # Additional JWT support
 passlib>=1.7.4 # For password hashing and verification
+email-validator>=2.0.0 # For email validation
 
 # Testing
 pytest>=7.4.0
