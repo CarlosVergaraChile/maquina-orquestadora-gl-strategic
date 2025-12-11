@@ -21,8 +21,8 @@ except ImportError:
     pytest.skip("FastAPI not installed", allow_module_level=True)
 
 from app.backend.server import app, db, orchestrator
-from database import Database
-from claude_integration import ClaudeOrchestrator
+from app.backend.database import Database
+from app.backend.claude_integration import ClaudeOrchestrator
 
 
 class TestDatabaseIntegration:
