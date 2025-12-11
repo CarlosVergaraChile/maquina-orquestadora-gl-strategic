@@ -274,6 +274,18 @@ async def serve_frontend():
     """Endpoint público - Servir frontend"""
     return FileResponse("app/frontend/index.html")
 
+
+@app.get("/system/status")
+async def system_status():
+    """System health check - runs all monitors (check, maintain, improve)."""
+    orchestrator = SystemHealthOrchestrator()
+    results = await orchestrator.run_all_operations()
+    summary = orchestrator.get_summary()
+    return {
+        "system_health": results,
+        "summary": summary,
+        "timestamp": datetime.now().isoformat()
+    }
 # ===== ENDPOINTS PROTEGIDOS (Requieren JWT) =====
 @app.post("/ask")
 async def ask(request: OrchestrationRequest, authorization: Optional[str] = None) -> OrchestrationResponse:
