@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Máquina Orquestadora de IA GL Strategic - Backend v2.3
-Integración REAL con Claude API + SQLite persistencia + JWT Auth
+"""Máquina orquestadora de IA GL Strategic - Backend v2.4Integración REAL con Claude API + SQLite persistencia + JWT Auth
 """
 import os
 import json
