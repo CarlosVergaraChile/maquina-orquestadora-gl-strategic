@@ -354,3 +354,39 @@ if __name__ == "__main__":
         port=port,
         log_level="info"
     )
+
+
+
+# ===== ORQUESTADOR Y API ROUTES =====
+from app.backend.orchestrator import orchestrator
+from app.backend.integrations import integration_orchestrator
+
+@app.get('/orchestrator/health')
+async def orchestrator_health():
+    """Reporte de salud del orquestador"""
+    return orchestrator.get_health_report()
+
+@app.post('/orchestrator/ask')
+async def orchestrator_ask(request: dict):
+    """Procesa request a través del orquestador"""
+    user_input = request.get('query', '')
+    # Aquí se integra con las IAs
+    return await orchestrator.process_request(user_input, [])
+
+@app.get('/integrations/status')
+async def integrations_status():
+    """Estado de todas las integraciones"""
+    return await integration_orchestrator.get_unified_status()
+
+@app.post('/integrations/search')
+async def integrations_search(request: dict):
+    """Búsqueda unificada en todos los servicios"""
+    query = request.get('q', '')
+    return await integration_orchestrator.unified_search(query)
+
+@app.post('/integrations/sync')
+async def integrations_sync():
+    """Sincroniza todos los servicios"""
+    return await integration_orchestrator.sync_all()
+
+logger.info('✅ Orquestador y API routes registradas')
