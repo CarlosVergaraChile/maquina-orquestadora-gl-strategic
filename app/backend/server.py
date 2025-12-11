@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Máquina Orquestadora de IA GL Strategic - Backend v2.1
-Integración con Claude API + SQLite persistencia + mejoras P0
+"""Máquina Orquestadora de IA GL Strategic - Backend v2.2
+Integración REAL con Claude API + SQLite persistencia + mejoras P0
 """
 
 import os
@@ -17,6 +17,11 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import uvicorn
 
+try:
+    from anthropic import Anthropic
+except ImportError:
+    Anthropic = None
+
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,7 +29,7 @@ logger = logging.getLogger(__name__)
 # ===== CONFIGURACIÓN =====
 DB_PATH = Path("data/conversations.db")
 DB_PATH.parent.mkdir(exist_ok=True)
-APIKEY = os.getenv("CLAUDE_API_KEY", "sk-test")
+APIKEY = os.getenv("CLAUDE_API_KEY", "")
 
 # ===== MODELOS =====
 class Message(BaseModel):
@@ -50,7 +55,6 @@ class ConversationDB:
         self.init_db()
     
     def init_db(self):
-        """Crear tablas si no existen"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS conversations (
@@ -66,7 +70,6 @@ class ConversationDB:
             logger.info(f"Database initialized at {self.db_path}")
     
     def save_message(self, role: str, content: str, emotion: str = None, model: str = "claude"):
-        """Guardar mensaje en BD"""
         with sqlite3.connect(self.db_path) as conn:
             conn.execute("""
                 INSERT INTO conversations (timestamp, role, content, emotion, model)
@@ -75,7 +78,6 @@ class ConversationDB:
             conn.commit()
     
     def get_history(self, limit: int = 20) -> List[Dict]:
-        """Obtener historial de conversaciones"""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             cursor = conn.execute("""
@@ -84,47 +86,76 @@ class ConversationDB:
             """, (limit,))
             return [dict(row) for row in cursor.fetchall()]
 
-# ===== IA INTEGRATION =====
+# ===== CLAUDE API INTEGRATION =====
 class ClaudeOrchestrator:
-    """Orquestador con Claude API (simulado, reemplazar con real)"""
+    """Orquestador con Claude API REAL"""
     
     def __init__(self, api_key: str):
         self.api_key = api_key
-        # TODO: Importar cliente real de Anthropic
-        # from anthropic import Anthropic
-        # self.client = Anthropic(api_key=api_key)
+        self.client = None
+        if Anthropic and api_key:
+            try:
+                self.client = Anthropic(api_key=api_key)
+                logger.info("Claude API client initialized")
+            except Exception as e:
+                logger.warning(f"Failed to init Claude: {e}. Using fallback.")
     
     async def generate_response(self, user_input: str, context: List[Message] = None) -> Dict:
-        """Genera respuesta usando Claude (o simulado)"""
-        # Por ahora, simulado. En producción:
-        # response = self.client.messages.create(
-        #     model="claude-3-5-sonnet-20241022",
-        #     max_tokens=1024,
-        #     messages=[...]
-        # )
+        """Genera respuesta usando Claude API real o fallback"""
         
-        # Respuesta simulada realista
+        if self.client and self.api_key:
+            try:
+                # Construir historial para Claude
+                messages = []
+                if context:
+                    for msg in context[-5:]:  # Últimos 5 mensajes para contexto
+                        messages.append({"role": msg.role, "content": msg.content})
+                messages.append({"role": "user", "content": user_input})
+                
+                # Llamar a Claude API
+                response = self.client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=1024,
+                    messages=messages,
+                    system="Eres una IA conversacional llamada Orquesta. Responde de manera concisa y útil en español."
+                )
+                
+                response_text = response.content[0].text
+                emotion = "confident"  # Claude siempre confiado
+                model = "claude-3-5-sonnet-20241022"
+                
+                logger.info(f"Claude response: {response_text[:50]}...")
+                
+                return {
+                    "response": response_text,
+                    "emotion": emotion,
+                    "model": model
+                }
+            
+            except Exception as e:
+                logger.error(f"Claude API error: {str(e)}")
+                return self._fallback_response(user_input)
+        
+        return self._fallback_response(user_input)
+    
+    def _fallback_response(self, user_input: str) -> Dict:
+        """Respuesta fallback cuando Claude no está disponible"""
         responses = [
-            f"He entendido tu pregunta sobre '{user_input}'. Permíteme analizar esto...",
-            f"Interesante observación sobre '{user_input}'. Mi análisis sugiere...",
-            f"Respecto a '{user_input}', puedo ayudarte considerando...",
+            f"He entendido tu pregunta sobre '{user_input[:30]}...'. Este es un modo de fallback, por favor configura CLAUDE_API_KEY.",
+            f"Respecto a '{user_input[:30]}...', en modo fallback no puedo procesar completamente. ¿Puedes proporcionar la clave API de Claude?",
         ]
-        
         import random
-        response = random.choice(responses)
-        emotion = random.choice(["thoughtful", "curious", "engaged", "confident"])
-        
         return {
-            "response": response,
-            "emotion": emotion,
-            "model": "claude-3-5-sonnet-20241022"
+            "response": random.choice(responses),
+            "emotion": "thoughtful",
+            "model": "fallback-simulator"
         }
 
 # ===== FASTAPI APP =====
 app = FastAPI(
-    title="Orquesta IA GL Strategic v2.1",
-    version="2.1.0",
-    description="Backend mejorado con Claude API y SQLite"
+    title="Orquesta IA GL Strategic v2.2",
+    version="2.2.0",
+    description="Backend con Claude API real integrada"
 )
 
 # CORS
@@ -143,11 +174,13 @@ orchestrator = ClaudeOrchestrator(APIKEY)
 # ===== ENDPOINTS =====
 @app.get("/")
 async def root():
+    api_status = "ready" if orchestrator.client else "fallback"
     return {
         "name": "Máquina Orquestadora GL Strategic",
-        "version": "2.1.0",
+        "version": "2.2.0",
         "status": "online",
-        "features": ["Claude API", "SQLite persistence", "Conversation history"],
+        "claude_api": api_status,
+        "features": ["Claude API Real", "SQLite persistence", "Conversation history"],
         "endpoints": ["/health", "/ask", "/history", "/app"]
     }
 
@@ -156,19 +189,20 @@ async def health():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "database": "connected" if DB_PATH.exists() else "error"
+        "database": "connected" if DB_PATH.exists() else "error",
+        "claude_api": "ready" if orchestrator.client else "not_configured"
     }
 
 @app.post("/ask")
 async def ask(request: OrchestrationRequest) -> OrchestrationResponse:
-    """Endpoint principal - Procesa pregunta"""
+    """Endpoint principal - Procesa pregunta con Claude API"""
     try:
         logger.info(f"Request: {request.text}")
         
         # Guardar mensaje del usuario
         db.save_message("user", request.text)
         
-        # Generar respuesta
+        # Generar respuesta con Claude
         result = await orchestrator.generate_response(request.text, request.context)
         
         # Guardar respuesta
@@ -207,7 +241,8 @@ async def serve_frontend():
 # ===== MAIN =====
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
-    logger.info(f"Starting server on port {port}")
+    logger.info(f"Starting server v2.2 on port {port}")
+    logger.info(f"Claude API: {'READY' if orchestrator.client else 'FALLBACK MODE'}")
     uvicorn.run(
         app,
         host="0.0.0.0",
