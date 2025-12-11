@@ -292,3 +292,69 @@ if __name__ == "__main__":
         if token_data:
             print(f"Token válido para usuario: {token_data.user_id}")
             print(f"Permisos: {token_data.permissions}")
+
+
+# authentication.py (Adaptación para WebSocket)
+
+from typing import Annotated
+from fastapi import Query, HTTPException, status
+from pydantic import BaseModel
+from jose import jwt, JWTError
+
+# --- CONFIGURACIÓN BASE (Asume que estas variables están definidas en tu app) ---
+SECRET_KEY = "tu-super-secreto-jwt"  # REEMPLAZAR con tu clave real
+ALGORITHM = "HS256"
+
+# --- MODELO DEL USUARIO (Simple) ---
+class UserInDB(BaseModel):
+    user_id: str
+    username: str
+
+# --- MOCK DE USUARIOS (REEMPLAZAR con tu consulta a PostgreSQL) ---
+MOCK_USERS_DB = {
+    "carlos_v": {"user_id": "carlos_v", "username": "CarlosVergara", "hashed_password": "hashed_password_placeholder"},
+}
+
+def get_user(user_id: str) -> UserInDB | None:
+    """Busca el usuario en la DB mockeada."""
+    if user_id in MOCK_USERS_DB:
+        return UserInDB(**MOCK_USERS_DB[user_id])
+    return None
+
+# --- FUNCIÓN DECODIFICADORA DE JWT (Base) ---
+
+def decode_jwt(token: str):
+    """Decodifica y valida el token JWT."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise JWTError
+        return user_id
+    except JWTError:
+        # Esto será manejado por la excepción de FastAPI
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token inválido o expirado",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+# --- FUNCIÓN ADAPTADA PARA WEBSOCKETS ---
+
+async def get_current_active_user_ws(
+    token: Annotated[str, Query()]
+):
+    """
+    Dependencia de autenticación para WebSockets. 
+    Usa el token del Query Parameter.
+    """
+    user_id = decode_jwt(token)
+    user = get_user(user_id)
+    if user is None:
+        # En WS, si la autenticación falla, la conexión no debe ser aceptada.
+        # Levantamos la excepción para evitar await websocket.accept()
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Usuario no encontrado",
+        )
+    return user.model_dump() # Devuelve el dict del usuario (user_id, username)
