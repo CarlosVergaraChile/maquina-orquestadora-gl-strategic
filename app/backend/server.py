@@ -9,7 +9,8 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict
 from pathlib import Path
-from fastapi import FastAPI, CORSMiddleware, Depends, HTTPException, status
+from starlette.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import uvicorn
