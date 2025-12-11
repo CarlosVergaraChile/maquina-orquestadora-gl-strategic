@@ -1,0 +1,59 @@
+name: CI/CD Pipeline
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install dependencies
+        run: |
+          pip install -r app/backend/requirements.txt
+          pip install black flake8 mypy
+      - name: Lint with Flake8
+        run: flake8 app/backend/ --max-line-length=120 || true
+      - name: Type check with MyPy
+        run: mypy app/backend/ --ignore-missing-imports || true
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.11']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Cache pip
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+      - name: Install dependencies
+        run: |
+          pip install -r app/backend/requirements.txt
+          pip install pytest pytest-cov pytest-asyncio
+      - name: Run tests
+        run: |
+          cd app/backend
+          pytest test_integration.py -v --cov
+        env:
+          CLAUDE_API_KEY: test-key
+          SECRET_KEY: test-key
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Bandit
+        run: |
+          pip install bandit
+          bandit -r app/backend/ -f json || true
