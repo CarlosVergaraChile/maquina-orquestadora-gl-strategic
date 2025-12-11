@@ -1,10 +1,24 @@
+# Core FastAPI dependencies
 fastapi~=0.109.0
 uvicorn[standard]~=0.25.0
 pydantic~=2.5
+starlette~=0.36.0
+
+# Database & ORM
 sqlalchemy~=2.0
 alembic~=1.13
-python-jose[cryptography]~=3.3.0
-anthropic~=0.20.0
-fastapi-users[sqlalchemy]~=12.1
 asyncpg~=0.29.0
-starlette~=0.36.0
+
+# Authentication & Security
+python-jose[cryptography]~=3.3.0
+bcrypt~=4.1.0
+
+# AI Integration
+anthropic~=0.20.0
+# Utilities
+aiofiles~=23.2.0
+python-dotenv~=1.0.0
+requests~=2.31.0
+
+# Monitoring & Health (automaintenance)
+psutil~=5.9.0
