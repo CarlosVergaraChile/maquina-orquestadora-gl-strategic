@@ -33,7 +33,7 @@ jobs:
         pip install pytest pytest-xdist pytest-cov
 
     - name: Run fast unit tests (parallel)
-      run: pytest -m unit -n auto --cov=app --cov-report=xml --tb=short
+      run: pytest -n auto --cov=app --cov-report=xml --tb=short
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
