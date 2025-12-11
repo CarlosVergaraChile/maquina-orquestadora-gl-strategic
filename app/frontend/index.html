@@ -196,6 +196,7 @@ const API_URL = 'https://maquina-orquestadora-gl-strategic.onrender.com';       
         
         let isListening = false;
         let conversationHistory = [];
+        let accessToken = null;
         
         // Speech Recognition
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -242,6 +243,18 @@ const API_URL = 'https://maquina-orquestadora-gl-strategic.onrender.com';       
             }
         });
         
+// Get JWT Token
+async function getToken() {
+  try {
+    const response = await fetch(`${API_URL}/token`);
+    const data = await response.json();
+    accessToken = data.access_token;
+    console.log('Token obtenido exitosamente');
+  } catch (error) {
+    console.error('Error obteniendo token:', error);
+  }
+}
+
         // Send Message
         async function sendMessage() {
             const text = inputEl.value.trim();
@@ -258,7 +271,7 @@ const API_URL = 'https://maquina-orquestadora-gl-strategic.onrender.com';       
             try {
                 const response = await fetch(`${API_URL}/ask`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json' , 'Authorization': `Bearer ${accessToken}`},
                     body: JSON.stringify({
                         text: text,
                         context: conversationHistory
@@ -337,6 +350,7 @@ const API_URL = 'https://maquina-orquestadora-gl-strategic.onrender.com';       
         
         // Greeting
         window.addEventListener('load', () => {
+                    getToken();
             addMessage('Hola! Soy tu Orquesta de IA. ¿En qué puedo ayudarte hoy?', 'assistant');
         });
     </script>
